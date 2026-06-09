@@ -120,12 +120,14 @@ void initWebServer(uint16_t port) {
             extern int currentPwmPercentage;
             extern int fanMode;
             extern unsigned int fanTempChannelIdx;
+            extern int temperaturePoint;
 
             String json = "{";
             json += "\"pwm_pct\":" + String(currentPwmPercentage) + ",";
             json += "\"fan_mode\":" + String(fanMode) + ",";
             json += "\"temp_channel_idx\":" + String(fanTempChannelIdx) + ",";
-            json += "\"temp_channel\":" + String(SHT41_PINS[fanTempChannelIdx]);
+            json += "\"temp_channel\":" + String(SHT41_PINS[fanTempChannelIdx]) + ",";
+            json += "\"temp_target\":" + String(temperaturePoint);
             json += "}";
             request->send(200, "application/json", json);
         });
@@ -134,6 +136,7 @@ void initWebServer(uint16_t port) {
             int pwmPct = -1;
             int fanModeParam = -1;
             int channelIdx = -1;
+            int tempTarget = -1;
 
             if (request->hasParam("pwm_pct")) {
                 pwmPct = request->getParam("pwm_pct")->value().toInt();
@@ -144,13 +147,16 @@ void initWebServer(uint16_t port) {
             if (request->hasParam("temp_channel")) {
                 channelIdx = request->getParam("temp_channel")->value().toInt();
             }
-            if (pwmPct == -1 && fanModeParam == -1 && channelIdx == -1) {
+            if (request->hasParam("temp_target")) {
+                tempTarget = request->getParam("temp_target")->value().toInt();
+            }
+            if (pwmPct == -1 && fanModeParam == -1 && channelIdx == -1 && tempTarget == -1) {
                 Serial.println("No parameters provided, error hereee");
                 request->send(400, "application/json", "{\"error\":\"No parameters provided\"}");
                 return;
             }
 
-            applyFanControl(pwmPct, fanModeParam, channelIdx);
+            applyFanControl(pwmPct, fanModeParam, channelIdx, tempTarget);
             request->send(200, "application/json", "{\"status\":\"ok\"}");
         });
 

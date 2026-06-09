@@ -61,48 +61,14 @@
   border-radius: 4px;
   color: #fff;
 }
-.control-row .slider-container {
-  margin: 0;
+.control-row input[type="range"] {
+  width: 100%;
   max-width: 330px;
 }
-.slider-container {
-  margin: 20px 0;
-  display: flex;
-  align-items: center;
-}
-.slider {
-  flex: 1;
-  height: 8px;
-  border-radius: 5px;
-  background: #333;
-  outline: none;
-  -webkit-appearance: none;
-}
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #26a9e0;
-  cursor: pointer;
-}
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #26a9e0;
-  cursor: pointer;
-  border: none;
-}
-.slider-value {
-  display: inline-block;
-  margin-left: 15px;
+.control-row output {
   font-size: 20px;
   font-weight: bold;
   color: #26a9e0;
-  min-width: 80px;
-  text-align: right;
 }
 .channel-list {
   display: grid;
