@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fan Control</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="fan_style.css" />
+  </head>
+  <body>
+    <div class="main-block">
+      <div class="title">
+        <h1>Fan Control Dashboard</h1>
+        <a href="/" class="nav-link">← Back to Settings</a>
+      </div>
+
+      <!-- Status Section -->
+      <div class="status-grid">
+        <div class="status-card">
+          <h3>Current PWM</h3>
+          <div class="status-value" id="currentPwm">--</div>
+          <div class="status-label">Raw Value (0-255)</div>
+        </div>
+        <div class="status-card">
+          <h3>Current PWM %</h3>
+          <div class="status-value" id="currentPwmPercentage">--</div>
+          <div class="status-label">Percentage (0-100%)</div>
+        </div>
+        <div class="status-card">
+          <h3>Target PWM %</h3>
+          <div class="status-value" id="targetPwmPercentage">--</div>
+          <div class="status-label">Set Point (0-100%)</div>
+        </div>
+        <div class="status-card">
+          <h3>Target Temperature</h3>
+          <div class="status-value" id="targetTemperature">--</div>
+          <div class="status-label">Set Point (<span id="tempUnit">C</span>)</div>
+        </div>
+        <div class="status-card">
+          <h3>Temp Channel</h3>
+          <div class="status-value" id="currentTemperatureChannel">--</div>
+          <div class="status-label">Active Channel</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="control-section">
+        <h2>Fan Controls</h2>
+
+        <div class="control-row">
+          <label for="pwmSlider">PWM %</label>
+          <div class="slider-container">
+            <input type="range" id="pwmSlider" class="slider" min="0" max="100" value="0" />
+            <span class="slider-value" id="pwmSliderValue">0%</span>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <label for="fanModePicker">Fan Mode</label>
+          <select id="fanModePicker">
+            <option value="0">Manual</option>
+            <option value="1">Standard</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <label for="tempChannelPicker">Temp Channel</label>
+          <select id="tempChannelPicker">
+            <option value="0">CH0</option>
+            <option value="1">CH2</option>
+            <option value="2">CH3</option>
+            <option value="3">CH4</option>
+          </select>
+        </div>
+
+        <div id="controlMessage" class="message"></div>
+      </div>
+
+      <!-- Temperature Channels -->
+      <div class="control-section">
+        <h2>Temperature Channels (<span id="tempUnitHeader">C</span>)</h2>
+        <div class="channel-list" id="channelList">
+          <!-- Channels will be populated by JavaScript -->
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      let eventSource;
+      let pwmDebounceTimer = null;
+      let pwmSliderActive = false;
+      const channelNumbers = [0, 2, 3, 4];
+
+      document.addEventListener("DOMContentLoaded", function() {
+        setupControls();
+        loadFanState();
+        setupSSE();
+      });
+
+      function setupControls() {
+        const pwmSlider = document.getElementById('pwmSlider');
+        const pwmSliderValue = document.getElementById('pwmSliderValue');
+        const fanModePicker = document.getElementById('fanModePicker');
+        const tempChannelPicker = document.getElementById('tempChannelPicker');
+
+        pwmSlider.addEventListener('input', function() {
+          pwmSliderValue.textContent = pwmSlider.value + '%';
+        });
+
+        pwmSlider.addEventListener('pointerdown', function() {
+          pwmSliderActive = true;
+        });
+
+        pwmSlider.addEventListener('pointerup', function() {
+          pwmSliderActive = false;
+          sendFanControl({ pwm_pct: pwmSlider.value });
+        });
+
+        pwmSlider.addEventListener('change', function() {
+          clearTimeout(pwmDebounceTimer);
+          pwmDebounceTimer = setTimeout(function() {
+            sendFanControl({ pwm_pct: pwmSlider.value });
+          }, 300);
+        });
+
+        fanModePicker.addEventListener('change', function() {
+          sendFanControl({ fan_mode: fanModePicker.value });
+        });
+
+        tempChannelPicker.addEventListener('change', function() {
+          sendFanControl({ temp_channel: tempChannelPicker.value });
+        });
+      }
+
+      function loadFanState() {
+        fetch('/fan/state')
+          .then(response => response.json())
+          .then(state => {
+            syncControls(state);
+          })
+          .catch(err => {
+            console.log('Could not load fan state:', err);
+          });
+      }
+
+      function syncControls(data) {
+        const pwmSlider = document.getElementById('pwmSlider');
+        const pwmSliderValue = document.getElementById('pwmSliderValue');
+        const fanModePicker = document.getElementById('fanModePicker');
+        const tempChannelPicker = document.getElementById('tempChannelPicker');
+
+        const pwmPct = data.pwm_pct !== undefined ? data.pwm_pct : data.targetPwmPercentage;
+        if (pwmPct !== undefined && !pwmSliderActive && document.activeElement !== pwmSlider) {
+          pwmSlider.value = pwmPct;
+          pwmSliderValue.textContent = pwmPct + '%';
+        }
+
+        const mode = data.fan_mode !== undefined ? data.fan_mode : data.fanMode;
+        if (mode !== undefined && document.activeElement !== fanModePicker) {
+          fanModePicker.value = String(mode);
+        }
+
+        const channelIdx = data.temp_channel_idx !== undefined
+          ? data.temp_channel_idx
+          : data.fanTempChannelIdx;
+        if (channelIdx !== undefined && document.activeElement !== tempChannelPicker) {
+          tempChannelPicker.value = String(channelIdx);
+        }
+      }
+
+      function sendFanControl(params) {
+        const query = new URLSearchParams(params).toString();
+        fetch('/fan_control?' + query)
+          .then(response => {
+            if (!response.ok) throw new Error('Request failed');
+            return response.json();
+          })
+          .then(() => {
+            showControlMessage('Settings applied', 'success');
+          })
+          .catch(err => {
+            console.error('Fan control error:', err);
+            showControlMessage('Failed to apply settings', 'error');
+          });
+      }
+
+      function showControlMessage(text, type) {
+        const message = document.getElementById('controlMessage');
+        message.textContent = text;
+        message.className = 'message ' + type;
+        message.style.display = 'block';
+        setTimeout(function() {
+          message.style.display = 'none';
+        }, 2000);
+      }
+
+      function setupSSE() {
+        eventSource = new EventSource('/events');
+        
+        eventSource.addEventListener('pwm_update', function(e) {
+          try {
+            const data = JSON.parse(e.data);
+            
+            // Update PWM values
+            // 0 is a valid value for currentPwm, so check for null/undefined specifically
+            const currentPwm = (data.currentPwm !== undefined && data.currentPwm !== null) ? data.currentPwm : '--';
+            document.getElementById('currentPwm').textContent = currentPwm;
+            document.getElementById('currentPwmPercentage').textContent = (data.currentPwmPercentage !== undefined ? data.currentPwmPercentage : 0) + '%';
+            document.getElementById('targetPwmPercentage').textContent = (data.targetPwmPercentage !== undefined ? data.targetPwmPercentage : 0) + '%';
+
+            syncControls(data);
+
+            // Update temperature values
+            const tempUnit = data.temperatureUnit || 'C';
+            const targetTemp = data.TargetTemperature !== undefined ? data.TargetTemperature : '--';
+            document.getElementById('targetTemperature').textContent = targetTemp + (targetTemp !== '--' ? tempUnit : '');
+            // 0 is a valid value for currentTemperatureChannel, so check for null/undefined specifically
+            const tempChannel = (data.currentTemperatureChannel !== undefined && data.currentTemperatureChannel !== null) ? data.currentTemperatureChannel : '--';
+            document.getElementById('currentTemperatureChannel').textContent = 'CH' + tempChannel;
+            
+            // Update temperature unit (not hardcoded)
+            document.getElementById('tempUnit').textContent = tempUnit;
+            document.getElementById('tempUnitHeader').textContent = tempUnit;
+            
+            // Update channel readings
+            if (data.channels && typeof data.channels === 'object') {
+              updateChannelList(data.channels, tempUnit);
+            } else if (Array.isArray(data.temperatureArray)) {
+              updateTemperatureArray(data.temperatureArray, tempUnit);
+            } else {
+              updateChannelList({}, tempUnit);
+            }
+          } catch (error) {
+            console.error('Error parsing SSE data:', error, e.data);
+          }
+        });
+        
+        eventSource.onerror = function(e) {
+          console.error('SSE connection error:', e);
+          // Attempt to reconnect after 3 seconds
+          setTimeout(function() {
+            if (eventSource.readyState === EventSource.CLOSED) {
+              setupSSE();
+            }
+          }, 3000);
+        };
+      }
+
+
+      // channels: { ch0: {temperature, humidity}, ch2: {...}, ... }
+      function updateChannelList(channels, tempUnit) {
+        const channelList = document.getElementById('channelList');
+        channelList.innerHTML = '';
+
+        channelNumbers.forEach(function(channelNum) {
+          const key = 'ch' + channelNum;
+          const reading = channels[key];
+          const channelItem = document.createElement('div');
+          channelItem.className = 'channel-item';
+
+          const temp = reading ? reading.temperature : undefined;
+          const hum = reading ? reading.humidity : undefined;
+          const tempValid = typeof temp === 'number' && temp >= 0;
+          const humValid = typeof hum === 'number' && hum >= 0;
+
+          channelItem.innerHTML = `
+            <h4>Channel ${channelNum}</h4>
+            <div class="channel-temp">
+              <span>Temperature:</span> ${tempValid ? temp.toFixed(1) + tempUnit : 'N/A'}
+            </div>
+            <div class="channel-hum">
+              <span>Humidity:</span> ${humValid ? hum.toFixed(1) + '%' : 'N/A'}
+            </div>
+          `;
+
+          channelList.appendChild(channelItem);
+        });
+      }
+
+      // Legacy fallback for temperatureArray format
+      function updateTemperatureArray(temperatureArray, tempUnit) {
+        const channels = {};
+        channelNumbers.forEach(function(channelNum, idx) {
+          const temp = temperatureArray[idx];
+          if (typeof temp === 'number') {
+            channels['ch' + channelNum] = { temperature: temp, humidity: -1 };
+          }
+        });
+        updateChannelList(channels, tempUnit);
+      }
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+          eventSource.close();
+        }
+      });
+    </script>
+  </body>
+</html>
+

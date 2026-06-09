@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ESP credential portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <script>
+    function populateFormFields(config) {
+      console.log("Populating form with config:", config);
+      if(config.ssid) document.getElementById('ssid').value = config.ssid;
+      if(config.pass) document.getElementById('pass').value = config.pass;
+      if(config.mqtt_broker_ip) document.getElementById('mqtt_broker_ip').value = config.mqtt_broker_ip;
+      if(config.mqtt_port) document.getElementById('mqtt_port').value = config.mqtt_port;
+      if(config.mqtt_client_id) document.getElementById('mqtt_client_id').value = config.mqtt_client_id;
+      if(config.mqtt_username) document.getElementById('mqtt_username').value = config.mqtt_username;
+      if(config.mqtt_password) document.getElementById('mqtt_password').value = config.mqtt_password;
+      if(config.mqtt_topic_base) document.getElementById('mqtt_topic_base').value = config.mqtt_topic_base;
+      if(config.fan_mode !== undefined) document.getElementById('fan_mode').value = config.fan_mode;
+      if(config.temperature_target) document.getElementById('temperature_target').value = config.temperature_target;
+      if(config.temperature_allowance) document.getElementById('temperature_allowance').value = config.temperature_allowance;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      fetch('/config')
+        .then(response => response.json())
+        .then(config => {
+          populateFormFields(config);
+        })
+        .catch(err => {
+          console.log("Could not load config:", err);
+        });
+    });
+  </script>
+
+  <body>
+    <div class="main-block">
+      <form method="get" action="setting">
+        <div class="title">
+          <h2>tracker setup</h2>
+        </div>
+
+        <div class="info">
+          <div class="field">
+            <label for="wifi">Wi-Fi:</label>
+            <input
+              id="ssid"
+              name="ssid"
+              maxlength="25"
+              placeholder="Wi-Fi name"
+              required
+              title="Wi-Fi name"
+            />
+          </div>
+
+          <div class="field">
+            <label for="password">Password:</label>
+            <input
+              id="pass"
+              name="pass"
+              maxlength="25"
+              placeholder="Password"
+              required
+              title="wifi password"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_broker_ip">MQTT Broker IP:</label>
+            <input
+              id="mqtt_broker_ip"
+              name="mqtt_broker_ip"
+              maxlength="15"
+              placeholder="192.168.0.230"
+              required
+              pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+              title="Please enter a valid IPv4 address (e.g., 192.168.0.230)"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_port">MQTT Port:</label>
+            <input
+              id="mqtt_port"
+              name="mqtt_port"
+              maxlength="5"
+              placeholder="1883"
+              type="number"
+              min="1"
+              max="65535"
+              required
+              title="Please enter a valid port number (1-65535)"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_client_id">MQTT Client ID:</label>
+            <input
+              id="mqtt_client_id"
+              name="mqtt_client_id"
+              maxlength="50"
+              placeholder="mqtt client id"
+              required
+              title="MQTT client identifier"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_username">MQTT Username:</label>
+            <input
+              id="mqtt_username"
+              name="mqtt_username"
+              maxlength="50"
+              placeholder="username"
+              required
+              title="MQTT username"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_password">MQTT Password:</label>
+            <input
+              id="mqtt_password"
+              name="mqtt_password"
+              maxlength="50"
+              placeholder="password"
+              required
+              title="MQTT password"
+            />
+          </div>
+
+          <div class="field">
+            <label for="mqtt_topic_base">MQTT Topic Base:</label>
+            <input
+              id="mqtt_topic_base"
+              name="mqtt_topic_base"
+              maxlength="100"
+              placeholder="esp32/sensors"
+              required
+              title="Base topic for MQTT messages"
+            />
+          </div>
+
+          <div class="field">
+            <label for="fan_mode">Fan Mode:</label>
+            <select
+              id="fan_mode"
+              name="fan_mode"
+              required
+              title="Fan operating mode"
+            >
+              <option value="0">Manual</option>
+              <option value="1" selected>Standard</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="temperature_target">Temperature Target (C):</label>
+            <input
+              id="temperature_target"
+              name="temperature_target"
+              type="number"
+              min="10"
+              max="70"
+              placeholder="25"
+              required
+              title="Target temperature (10-70C)"
+            />
+          </div>
+
+          <div class="field">
+            <label for="temperature_allowance">Temperature Allowance (C):</label>
+            <input
+              id="temperature_allowance"
+              name="temperature_allowance"
+              type="number"
+              min="1"
+              max="10"
+              placeholder="2"
+              value="2"
+              required
+              title="Temperature change allowance (1-10C)"
+            />
+          </div>
+        </div>
+        <input class="button" type="submit" value="Submit" />
+      </form>
+      <div style="margin-top: 20px; text-align: center;">
+        <button class="button" onclick="window.location.href='/fan'" style="background-color: #007bff; margin-right: 10px;">Fan Control</button>
+        <button class="button" onclick="window.location.href='/reset'" style="background-color: #dc3545; margin-right: 10px;">Reset Settings</button>
+        <button class="button" onclick="window.location.href='/restart'" style="background-color: #28a745;">Restart Device</button>
+      </div>
+    </div>
+  </body>
+</html>
