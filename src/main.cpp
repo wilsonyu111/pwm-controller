@@ -33,7 +33,7 @@
 #define PWM_PERCENTAGE_MAX 100
 #define PWM_MIN 0
 #define PWM_MAX 255
-#define TEMPERATURE_POINT_MIN 25
+#define TEMPERATURE_POINT_MIN 5
 #define TEMPERATURE_POINT_MAX 60
 #define PCF_PIN_COUNT 4
 #define MUX_ADDRESS 0x70
@@ -77,7 +77,7 @@ void savePwmPercentage();
 void saveTemperaturePoint();
 void saveFanTempChannel();
 void saveFanMode();
-void applyFanControl(int pwmPct, int fanModeParam, int channelIdx);
+void applyFanControl(int pwmPct, int fanModeParam, int channelIdx, int tempTarget);
 void publishSensorReadingsToMQTT(const SensorData& sensorData);
 void calculateFanPWM(float tempTarget, float currentTemp, float tempAllowance);
 void setFanPWM(uint8_t pwmValue);
@@ -110,7 +110,8 @@ void calculateFanPWM(float tempTarget, float currentTemp, float tempAllowance) {
     if (abs(currentTemp - tempTarget) <= tempAllowance) return;
 
     if (currentTemp > tempTarget) {
-        currentPwmValue = std::min((uint8_t)(currentPwmValue + PWM_CHANGE_STEP), (uint8_t)PWM_MAX);
+        int nextPwm = currentPwmValue + PWM_CHANGE_STEP;
+        currentPwmValue = (uint8_t)std::min(nextPwm, PWM_MAX);
     } else if (currentTemp < tempTarget) {
         if (currentPwmValue >= PWM_CHANGE_STEP) {
             currentPwmValue = currentPwmValue - PWM_CHANGE_STEP;
@@ -411,7 +412,7 @@ void saveFanMode() {
     Serial.println("saved fan mode");
 }
 
-void applyFanControl(int pwmPct, int fanModeParam, int channelIdx) {
+void applyFanControl(int pwmPct, int fanModeParam, int channelIdx, int tempTarget) {
     if (pwmPct >= PWM_PERCENTAGE_MIN && pwmPct <= PWM_PERCENTAGE_MAX) {
         currentPwmPercentage = pwmPct;
         savePwmPercentage();
@@ -423,6 +424,10 @@ void applyFanControl(int pwmPct, int fanModeParam, int channelIdx) {
     if (channelIdx >= 0 && (unsigned int)channelIdx < SHT41_COUNT) {
         fanTempChannelIdx = channelIdx;
         saveFanTempChannel();
+    }
+    if (tempTarget >= TEMPERATURE_POINT_MIN && tempTarget <= TEMPERATURE_POINT_MAX) {
+        temperaturePoint = tempTarget;
+        saveTemperaturePoint();
     }
 }
 

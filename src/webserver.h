@@ -25,4 +25,4 @@ void broadcastPwmUpdate(SensorData sensorData);
 String buildSensorDataJson(const SensorData& sensorData);
 
 // Apply fan control from web UI (-1 = leave unchanged)
-void applyFanControl(int pwmPct, int fanModeParam, int channelIdx);
+void applyFanControl(int pwmPct, int fanModeParam, int channelIdx, int tempTarget);

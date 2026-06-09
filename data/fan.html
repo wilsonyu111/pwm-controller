@@ -9,7 +9,7 @@
     <div class="main-block">
       <div class="title">
         <h1>Fan Control Dashboard</h1>
-        <a href="/" class="nav-link">← Back to Settings</a>
+        <a href="/" class="nav-link"> < Back to Settings</a>
       </div>
 
       <!-- Status Section -->
@@ -47,10 +47,14 @@
 
         <div class="control-row">
           <label for="pwmSlider">PWM %</label>
-          <div class="slider-container">
-            <input type="range" id="pwmSlider" class="slider" min="0" max="100" value="0" />
-            <span class="slider-value" id="pwmSliderValue">0%</span>
-          </div>
+          <input type="range" id="pwmSlider" min="0" max="100" value="0" step="1" />
+          <output id="pwmSliderValue" for="pwmSlider">0%</output>
+        </div>
+
+        <div class="control-row">
+          <label for="tempTargetSlider">Target Temperature (C)</label>
+          <input type="range" id="tempTargetSlider" min="5" max="60" value="25" step="1" />
+          <output id="tempTargetSliderValue" for="tempTargetSlider">25 C</output>
         </div>
 
         <div class="control-row">
@@ -86,8 +90,6 @@
 
     <script>
       let eventSource;
-      let pwmDebounceTimer = null;
-      let pwmSliderActive = false;
       const channelNumbers = [0, 2, 3, 4];
 
       document.addEventListener("DOMContentLoaded", function() {
@@ -99,6 +101,8 @@
       function setupControls() {
         const pwmSlider = document.getElementById('pwmSlider');
         const pwmSliderValue = document.getElementById('pwmSliderValue');
+        const tempTargetSlider = document.getElementById('tempTargetSlider');
+        const tempTargetSliderValue = document.getElementById('tempTargetSliderValue');
         const fanModePicker = document.getElementById('fanModePicker');
         const tempChannelPicker = document.getElementById('tempChannelPicker');
 
@@ -106,20 +110,16 @@
           pwmSliderValue.textContent = pwmSlider.value + '%';
         });
 
-        pwmSlider.addEventListener('pointerdown', function() {
-          pwmSliderActive = true;
-        });
-
-        pwmSlider.addEventListener('pointerup', function() {
-          pwmSliderActive = false;
+        pwmSlider.addEventListener('change', function() {
           sendFanControl({ pwm_pct: pwmSlider.value });
         });
 
-        pwmSlider.addEventListener('change', function() {
-          clearTimeout(pwmDebounceTimer);
-          pwmDebounceTimer = setTimeout(function() {
-            sendFanControl({ pwm_pct: pwmSlider.value });
-          }, 300);
+        tempTargetSlider.addEventListener('input', function() {
+          tempTargetSliderValue.textContent = tempTargetSlider.value + ' C';
+        });
+
+        tempTargetSlider.addEventListener('change', function() {
+          sendFanControl({ temp_target: tempTargetSlider.value });
         });
 
         fanModePicker.addEventListener('change', function() {
@@ -145,13 +145,21 @@
       function syncControls(data) {
         const pwmSlider = document.getElementById('pwmSlider');
         const pwmSliderValue = document.getElementById('pwmSliderValue');
+        const tempTargetSlider = document.getElementById('tempTargetSlider');
+        const tempTargetSliderValue = document.getElementById('tempTargetSliderValue');
         const fanModePicker = document.getElementById('fanModePicker');
         const tempChannelPicker = document.getElementById('tempChannelPicker');
 
         const pwmPct = data.pwm_pct !== undefined ? data.pwm_pct : data.targetPwmPercentage;
-        if (pwmPct !== undefined && !pwmSliderActive && document.activeElement !== pwmSlider) {
+        if (pwmPct !== undefined && document.activeElement !== pwmSlider) {
           pwmSlider.value = pwmPct;
           pwmSliderValue.textContent = pwmPct + '%';
+        }
+
+        const tempTarget = data.temp_target !== undefined ? data.temp_target : data.TargetTemperature;
+        if (tempTarget !== undefined && document.activeElement !== tempTargetSlider) {
+          tempTargetSlider.value = tempTarget;
+          tempTargetSliderValue.textContent = tempTarget + ' C';
         }
 
         const mode = data.fan_mode !== undefined ? data.fan_mode : data.fanMode;
