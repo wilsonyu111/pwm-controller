@@ -9,7 +9,7 @@ AsyncWebServer* server = nullptr;
 AsyncEventSource* events = nullptr;  // SSE event source
 uint16_t serverPort = 80;
 bool routesRegistered = false;
-extern Preferences preferences;  // Defined in final-test.cpp
+extern Preferences appPreferences;  // Defined in final-test.cpp
 
 static String getDeviceIpAddress() {
     if (WiFi.status() == WL_CONNECTED) {
@@ -162,19 +162,19 @@ void initWebServer(uint16_t port) {
 
     // Get config endpoint - returns WiFi and MQTT credentials as JSON
     server->on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
-        preferences.begin("settings", true);  // Read-only mode
-        String ssid = preferences.getString("ssid", "");
-        String pass = preferences.getString("pass", "");
-        String mqtt_broker_ip = preferences.getString("broker_ip", "");
-        String mqtt_port = preferences.getString("port", "");
-        String mqtt_client_id = preferences.getString("client_id", "");
-        String mqtt_username = preferences.getString("username", "");
-        String mqtt_password = preferences.getString("password", "");
-        String mqtt_topic_base = preferences.getString("topic_base", "");
-        int fan_mode = preferences.getInt("fanMode", 1);  // Default to standard (1)
-        int temperature_target = preferences.getInt("tempTarget", 25);  // Default to 25°C
-        float temperature_allowance = preferences.getFloat("tempAllowance", 2.0);  // Default to 2.0°C
-        preferences.end();
+        appPreferences.begin("settings", true);  // Read-only mode
+        String ssid = appPreferences.getString("ssid", "");
+        String pass = appPreferences.getString("pass", "");
+        String mqtt_broker_ip = appPreferences.getString("broker_ip", "");
+        String mqtt_port = appPreferences.getString("port", "");
+        String mqtt_client_id = appPreferences.getString("client_id", "");
+        String mqtt_username = appPreferences.getString("username", "");
+        String mqtt_password = appPreferences.getString("password", "");
+        String mqtt_topic_base = appPreferences.getString("topic_base", "");
+        int fan_mode = appPreferences.getInt("fanMode", 1);  // Default to standard (1)
+        int temperature_target = appPreferences.getInt("tempTarget", 25);  // Default to 25°C
+        float temperature_allowance = appPreferences.getFloat("tempAllowance", 2.0);  // Default to 2.0°C
+        appPreferences.end();
         
         String json = "{\"ssid\":\"" + ssid + "\",\"pass\":\"" + pass + 
                      "\",\"mqtt_broker_ip\":\"" + mqtt_broker_ip + 
@@ -192,42 +192,42 @@ void initWebServer(uint16_t port) {
     // Setting endpoint - saves WiFi and MQTT credentials
     server->on("/setting", HTTP_GET, [](AsyncWebServerRequest *request){
         if (request->hasParam("ssid") && request->hasParam("pass")) {
-            preferences.begin("settings", false);  // Read-write mode
+            appPreferences.begin("settings", false);  // Read-write mode
             
             // Save WiFi settings
             String ssid = request->getParam("ssid")->value();
             String pass = request->getParam("pass")->value();
-            preferences.putString("ssid", ssid);
-            preferences.putString("pass", pass);
+            appPreferences.putString("ssid", ssid);
+            appPreferences.putString("pass", pass);
             
             // Save MQTT settings if provided
             if (request->hasParam("mqtt_broker_ip") && request->hasParam("mqtt_port") && 
                 request->hasParam("mqtt_client_id") && request->hasParam("mqtt_username") && 
                 request->hasParam("mqtt_password") && request->hasParam("mqtt_topic_base")) {
                 
-                preferences.putString("broker_ip", request->getParam("mqtt_broker_ip")->value());
-                preferences.putString("port", request->getParam("mqtt_port")->value());
-                preferences.putString("client_id", request->getParam("mqtt_client_id")->value());
-                preferences.putString("username", request->getParam("mqtt_username")->value());
-                preferences.putString("password", request->getParam("mqtt_password")->value());
-                preferences.putString("topic_base", request->getParam("mqtt_topic_base")->value());
+                appPreferences.putString("broker_ip", request->getParam("mqtt_broker_ip")->value());
+                appPreferences.putString("port", request->getParam("mqtt_port")->value());
+                appPreferences.putString("client_id", request->getParam("mqtt_client_id")->value());
+                appPreferences.putString("username", request->getParam("mqtt_username")->value());
+                appPreferences.putString("password", request->getParam("mqtt_password")->value());
+                appPreferences.putString("topic_base", request->getParam("mqtt_topic_base")->value());
             }
             
             // Save fan mode and temperature target if provided
             if (request->hasParam("fan_mode") && request->hasParam("temperature_target")) {
                 int fan_mode = request->getParam("fan_mode")->value().toInt();
                 int temp_target = request->getParam("temperature_target")->value().toInt();
-                preferences.putInt("fanMode", fan_mode);
-                preferences.putInt("tempTarget", temp_target);
+                appPreferences.putInt("fanMode", fan_mode);
+                appPreferences.putInt("tempTarget", temp_target);
             }
             
             // Save temperature allowance if provided (can be saved independently)
             if (request->hasParam("temperature_allowance")) {
                 float temp_allowance = request->getParam("temperature_allowance")->value().toFloat();
-                preferences.putFloat("tempAllowance", temp_allowance);
+                appPreferences.putFloat("tempAllowance", temp_allowance);
             }
             
-            preferences.end();
+            appPreferences.end();
             
             request->send(200, "text/html", "<h1>Settings saved!</h1><p>WiFi, MQTT, and fan settings have been saved. Please restart the device.</p><a href='/'>Back</a>");
         } else {
@@ -237,20 +237,20 @@ void initWebServer(uint16_t port) {
 
     // Reset endpoint - clears all settings
     server->on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
-        preferences.begin("settings", false);
+        appPreferences.begin("settings", false);
         // Clear only WiFi and MQTT related keys, keep other settings like pwmPct and tempPt
-        preferences.remove("ssid");
-        preferences.remove("pass");
-        preferences.remove("broker_ip");
-        preferences.remove("port");
-        preferences.remove("client_id");
-        preferences.remove("username");
-        preferences.remove("password");
-        preferences.remove("topic_base");
-        preferences.remove("fanMode");
-        preferences.remove("tempTarget");
-        preferences.remove("tempAllowance");
-        preferences.end();
+        appPreferences.remove("ssid");
+        appPreferences.remove("pass");
+        appPreferences.remove("broker_ip");
+        appPreferences.remove("port");
+        appPreferences.remove("client_id");
+        appPreferences.remove("username");
+        appPreferences.remove("password");
+        appPreferences.remove("topic_base");
+        appPreferences.remove("fanMode");
+        appPreferences.remove("tempTarget");
+        appPreferences.remove("tempAllowance");
+        appPreferences.end();
         
         request->send(200, "text/html", "<h1>Settings reset!</h1><p>WiFi, MQTT, and fan settings have been cleared.</p><a href='/'>Back</a>");
     });
