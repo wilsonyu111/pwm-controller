@@ -7,10 +7,6 @@
 #define SHT41_COUNT 4
 extern const uint8_t SHT41_PINS[4];
 
-void IRAM_ATTR handleRotaryChange();
-void serviceRotary();
-void pollRotaryButton();
-void pollPcfButtons();
 void setup();
 void loop();
 
